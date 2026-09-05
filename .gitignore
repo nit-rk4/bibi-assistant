@@ -1,0 +1,25 @@
+# Frontend dependencies and builds
+frontend/node_modules/
+frontend/dist/
+
+# Python virtual environment and cache
+backend/.venv/
+**/__pycache__/
+*.py[cod]
+
+# Chip's private local data
+*.db
+*.sqlite
+*.sqlite3
+
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Operating-system files
+.DS_Store
+Thumbs.db
