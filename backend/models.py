@@ -31,6 +31,26 @@ class Task(TaskBase, table=True):
 class TaskCreate(TaskBase):
     pass
 
+class TaskUpdate (SQLModel):
+    title: str | None = None
+    description: str | None = None
+    deadline: datetime | None = None
+    
+    estimated_minutes: int | None = Field(default=None, gt=0)
+    
+    importance: int | None = Field(default=None, ge=1, le=5)
+    difficulty: int | None = Field(default=None, ge=1, le=5)
+    
+    task_type: str | None = None
+    can_be_split: bool | None = None
+    minimum_session_minutes: int | None = Field(default=None, gt=0)
+    maximum_session_minutes: int | None = Field(default=None, gt=0)
+    
+    recurrence: str | None = None
+    status: str | None = None
+
+
+
 
 class ScheduleBlockBase(SQLModel):
     title: str
@@ -56,3 +76,16 @@ class ScheduleBlock(ScheduleBlockBase, table=True):
 
 class ScheduleBlockCreate(ScheduleBlockBase):
     task_id: int | None = None
+    
+
+class ScheduleBlockUpdate(SQLModel):
+    title: str | None = None
+    start_at: datetime | None = None
+    end_at: datetime | None = None
+    
+    category: str | None = None
+    status: str | None = None
+    reason: str | None = None
+    is_recurring: bool | None = None
+    
+
