@@ -2,9 +2,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import Session, select
 
-from database import create_db_and_tables, get_session
+from database import create_db_and_tables
 from routers import tasks, schedule_blocks
 
 @asynccontextmanager
