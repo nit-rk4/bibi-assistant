@@ -27,10 +27,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(tasks.router)
+app.include_router(schedule_blocks.router)
+
 @app.get("/health")
 def check_health():
     return{"status": "online",}
-
-
-app.include_router(tasks.router)
-app.include_router(schedule_blocks.router)
