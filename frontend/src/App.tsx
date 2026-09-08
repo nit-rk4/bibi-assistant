@@ -1,4 +1,10 @@
 import { useEffect, useState } from 'react'
+import {
+  getScheduleBlocks,
+  updateScheduleBlock,
+  type ApiScheduleBlock,
+  type ScheduleBlockChanges
+} from './api'
 import './App.css'
 
 const days = [
@@ -13,11 +19,12 @@ const days = [
 
 type ScheduleBlock = {
   id: string
+  backendId?: number
   title: string
   day: number
   startHour: number
   endHour: number
-  category: 'class' | 'church' | 'task'
+  category: string
   status: 'confirmed' | 'proposed'
   reason?: string
 }
@@ -104,17 +111,6 @@ const initialBlocks: ScheduleBlock[] = [
     category: 'church',
     status: 'confirmed',
   },
-  {
-    id: 'proposal-1',
-    title: 'School assignment',
-    day: 3,
-    startHour: 13,
-    endHour: 14,
-    category: 'task',
-    status: 'proposed',
-    reason:
-      'This slot gives you time to finish before Friday without crowding your busiest days or taking away your evening.',
-  },
 ]
 
 const startHour = 6
@@ -142,23 +138,140 @@ function getWeekStart(weekOffset: number) {
   return monday
 }
 
+function getDayIndex(date: Date) {
+  const browserDay = date.getDay()
+
+  return browserDay === 0 ? 6 : browserDay - 1
+}
+
+function getDecimalHour(date: Date) {
+  return date.getHours() + date.getMinutes() / 60
+}
+
+function apiBlockToScheduleBlock(
+  block: ApiScheduleBlock,
+): ScheduleBlock {
+  const start = new Date(block.start_at)
+  const end = new Date(block.end_at)
+
+
+  return {
+    id: `backend-${block.id}`,
+    backendId: block.id,
+    title: block.title,
+    day: getDayIndex(start),
+    startHour: getDecimalHour(start),
+    endHour: getDecimalHour(end),
+    category: block.category,
+    status:
+      block.status === 'proposed'
+        ? 'proposed'
+        : 'confirmed',
+    reason: block.reason ?? undefined,
+  }
+}
+
+function blockOccursInWeek(
+  block: ApiScheduleBlock,
+  weekStart: Date,
+) {
+  const blockStart = new Date(block.start_at)
+
+  const followingWeek = new Date(weekStart)
+  followingWeek.setDate(weekStart.getDate() + 7)
+
+  return (
+    blockStart >= weekStart &&
+    blockStart < followingWeek
+  )
+}
+
+function dateAtHour(date: Date, hour: number) {
+  const result = new Date(date)
+  const wholeHour = Math.floor(hour)
+  const minutes = Math.round((hour - wholeHour) * 60)
+
+  result.setHours(wholeHour,minutes,0,0)
+  return result
+}
+
+function toApiDateTime(date: Date) {
+  const pad = (value: number) =>
+    value.toString().padStart(2, '0')
+
+  return [
+    date.getFullYear(),
+    '-',
+    pad(date.getMonth() + 1),
+    '-',
+    pad(date.getDate()),
+    'T',
+    pad(date.getHours()),
+    ':',
+    pad(date.getMinutes()),
+    ':00',  
+  ].join('')
+}
+
+function getCategoryClass(category: string) {
+  const normalizedCategory = category
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+
+  return `category-${normalizedCategory || 'other'}`
+}
+
 function App() {
   const [backendOnline, setBackendOnline] = useState(false)
   const [blocks, setBlocks] = useState(initialBlocks)
   const [weekOffset, setWeekOffset] = useState(0)
+  const [savingProposal, setSavingProposal] = useState(false)
+  const [proposalError, setProposalError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/health')
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Backend request failed')
-        }
+  let ignoreResult = false
 
-        return response.json()
-      })
-      .then(() => setBackendOnline(true))
-      .catch(() => setBackendOnline(false))
-  }, [])
+  async function loadSchedule() {
+    try {
+      const savedBlocks = await getScheduleBlocks()
+
+      if (ignoreResult) {
+        return
+      }
+
+      const selectedWeekStart = getWeekStart(weekOffset)
+
+      const backendBlocks = savedBlocks
+        .filter((block) => block.status !== 'rejected')
+        .filter((block) =>
+          blockOccursInWeek(block, selectedWeekStart),
+        )
+        .map(apiBlockToScheduleBlock)
+
+      setBlocks([
+        ...initialBlocks,
+        ...backendBlocks,
+      ])
+
+      setBackendOnline(true)
+    } catch (error) {
+      console.error('Could not load schedule:', error)
+
+      if (!ignoreResult) {
+        setBackendOnline(false)
+        setBlocks(initialBlocks)
+      }
+    }
+  }
+
+  void loadSchedule()
+
+  return () => {
+    ignoreResult = true
+  }
+}, [weekOffset])
 
   const proposedBlock = blocks.find((block) => block.status === 'proposed')
   const hours = Array.from(
@@ -185,53 +298,97 @@ function App() {
     year: 'numeric',
   })}`
 
-  function acceptProposal() {
+  async function saveProposalChanges(
+  changes: ScheduleBlockChanges,
+) {
+  if (!proposedBlock?.backendId || savingProposal) {
+    return
+  }
+
+  setSavingProposal(true)
+  setProposalError(null)
+
+  try {
+    const updatedBlock = await updateScheduleBlock(
+      proposedBlock.backendId,
+      changes,
+    )
+
+    if (updatedBlock.status === 'rejected') {
+      setBlocks((currentBlocks) =>
+        currentBlocks.filter(
+          (block) => block.backendId !== updatedBlock.id,
+        ),
+      )
+
+      return
+    }
+
+    const displayBlock =
+      apiBlockToScheduleBlock(updatedBlock)
+
     setBlocks((currentBlocks) =>
       currentBlocks.map((block) =>
-        block.status === 'proposed'
-          ? { ...block, status: 'confirmed' as const }
+        block.backendId === updatedBlock.id
+          ? displayBlock
           : block,
       ),
     )
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Could not update the proposal.'
+
+    setProposalError(message)
+  } finally {
+    setSavingProposal(false)
+  }
+}
+
+async function acceptProposal() {
+  await saveProposalChanges({
+    status: 'confirmed',
+  })
+}
+
+async function rejectProposal() {
+  await saveProposalChanges({
+    status: 'rejected',
+  })
+}
+
+async function moveProposal() {
+  const newStart = dateAtHour(weekDates[4], 14)
+  const newEnd = dateAtHour(weekDates[4], 15)
+
+  await saveProposalChanges({
+    start_at: toApiDateTime(newStart),
+    end_at: toApiDateTime(newEnd),
+    reason:
+      'I moved it to Friday from 2–3 PM. This still leaves time before your evening class.',
+  })
+}
+
+async function shortenProposal() {
+  if (!proposedBlock) {
+    return
   }
 
-  function rejectProposal() {
-    setBlocks((currentBlocks) =>
-      currentBlocks.filter((block) => block.status !== 'proposed'),
-    )
-  }
+  const newStart = dateAtHour(
+    weekDates[proposedBlock.day],
+    proposedBlock.startHour,
+  )
 
-  function moveProposal() {
-    setBlocks((currentBlocks) =>
-      currentBlocks.map((block) =>
-        block.status === 'proposed'
-          ? {
-              ...block,
-              day: 4,
-              startHour: 14,
-              endHour: 15,
-              reason:
-                'I moved it to Friday from 2–3 PM. This still leaves time before your evening class.',
-            }
-          : block,
-      ),
-    )
-  }
+  const newEnd = new Date(newStart)
+  newEnd.setMinutes(newEnd.getMinutes() + 30)
 
-  function shortenProposal() {
-    setBlocks((currentBlocks) =>
-      currentBlocks.map((block) =>
-        block.status === 'proposed'
-          ? {
-              ...block,
-              endHour: block.startHour + 0.5,
-              reason:
-                'I shortened this to a 30-minute starter session so you can make progress without using the whole hour.',
-            }
-          : block,
-      ),
-    )
-  }
+  await saveProposalChanges({
+    end_at: toApiDateTime(newEnd),
+    reason:
+      'I shortened this to a 30-minute starter session so you can make progress without using the whole hour.',
+  })
+}
 
   return (
     <div className="app-shell">
@@ -341,7 +498,7 @@ function App() {
                     .filter((block) => block.day === dayIndex)
                     .map((block) => (
                       <article
-                        className={`schedule-block ${block.category} ${block.status}`}
+                        className={`schedule-block ${getCategoryClass(block.category)} ${block.status}`}
                         key={block.id}
                         style={{
                           top:
@@ -418,24 +575,59 @@ function App() {
                   </div>
                 </section>
 
+                {proposalError && (
+                  <p className="proposal-error" role="alert">
+                    {proposalError}
+                  </p>
+                )}
+
                 <div className="proposal-actions">
-                  <button className="accept" onClick={acceptProposal}>
-                    ✓ Accept
+                  <button
+                    className="accept"
+                    disabled={savingProposal}
+                    onClick={acceptProposal}
+                  >
+                    {savingProposal ? 'Saving...' : '✓ Accept'}
                   </button>
 
-                  <button className="adjust" onClick={moveProposal}>
+                  <button
+                    className="adjust"
+                    disabled={savingProposal}
+                    onClick={moveProposal}
+                  >
                     Adjust
                   </button>
 
-                  <button className="reject" onClick={rejectProposal}>
+                  <button
+                    className="reject"
+                    disabled={savingProposal}
+                    onClick={rejectProposal}
+                  >
                     Reject
                   </button>
                 </div>
 
                 <div className="quick-actions">
-                  <button onClick={moveProposal}>Find another time</button>
-                  <button onClick={moveProposal}>Move to another day</button>
-                  <button onClick={shortenProposal}>Shorten to 30 min</button>
+                  <button
+                    disabled={savingProposal}
+                    onClick={moveProposal}
+                  >
+                    Find another time
+                  </button>
+
+                  <button
+                    disabled={savingProposal}
+                    onClick={moveProposal}
+                  >
+                    Move to another day
+                  </button>
+
+                  <button
+                    disabled={savingProposal}
+                    onClick={shortenProposal}
+                  >
+                    Shorten to 30 min
+                  </button>
                 </div>
               </>
             ) : (
