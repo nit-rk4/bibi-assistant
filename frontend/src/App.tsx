@@ -1,159 +1,156 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
 import {
   getScheduleBlocks,
   updateScheduleBlock,
   type ApiScheduleBlock,
-  type ScheduleBlockChanges
-} from './api'
-import './App.css'
+  type ScheduleBlockChanges,
+} from "./api";
+import "./App.css";
 
 const days = [
-  { short: 'MON', long: 'Monday' },
-  { short: 'TUE', long: 'Tuesday' },
-  { short: 'WED', long: 'Wednesday' },
-  { short: 'THU', long: 'Thursday' },
-  { short: 'FRI', long: 'Friday' },
-  { short: 'SAT', long: 'Saturday' },
-  { short: 'SUN', long: 'Sunday' },
-]
+  { short: "MON", long: "Monday" },
+  { short: "TUE", long: "Tuesday" },
+  { short: "WED", long: "Wednesday" },
+  { short: "THU", long: "Thursday" },
+  { short: "FRI", long: "Friday" },
+  { short: "SAT", long: "Saturday" },
+  { short: "SUN", long: "Sunday" },
+];
 
 type ScheduleBlock = {
-  id: string
-  backendId?: number
-  title: string
-  day: number
-  startHour: number
-  endHour: number
-  category: string
-  status: 'confirmed' | 'proposed'
-  reason?: string
-}
+  id: string;
+  backendId?: number;
+  title: string;
+  day: number;
+  startHour: number;
+  endHour: number;
+  category: string;
+  status: "confirmed" | "proposed";
+  reason?: string;
+};
 
 const initialBlocks: ScheduleBlock[] = [
   {
-    id: 'mon-1',
-    title: 'Class',
+    id: "mon-1",
+    title: "Class",
     day: 0,
     startHour: 9,
     endHour: 11,
-    category: 'class',
-    status: 'confirmed',
+    category: "class",
+    status: "confirmed",
   },
   {
-    id: 'mon-2',
-    title: 'Classes',
+    id: "mon-2",
+    title: "Classes",
     day: 0,
     startHour: 15,
     endHour: 19,
-    category: 'class',
-    status: 'confirmed',
+    category: "class",
+    status: "confirmed",
   },
   {
-    id: 'tue-1',
-    title: 'Classes',
+    id: "tue-1",
+    title: "Classes",
     day: 1,
     startHour: 9,
     endHour: 13,
-    category: 'class',
-    status: 'confirmed',
+    category: "class",
+    status: "confirmed",
   },
   {
-    id: 'tue-2',
-    title: 'Classes',
+    id: "tue-2",
+    title: "Classes",
     day: 1,
     startHour: 15,
     endHour: 19,
-    category: 'class',
-    status: 'confirmed',
+    category: "class",
+    status: "confirmed",
   },
   {
-    id: 'thu-1',
-    title: 'Class',
+    id: "thu-1",
+    title: "Class",
     day: 3,
     startHour: 9,
     endHour: 11,
-    category: 'class',
-    status: 'confirmed',
+    category: "class",
+    status: "confirmed",
   },
   {
-    id: 'thu-2',
-    title: 'Class',
+    id: "thu-2",
+    title: "Class",
     day: 3,
     startHour: 17,
     endHour: 19,
-    category: 'class',
-    status: 'confirmed',
+    category: "class",
+    status: "confirmed",
   },
   {
-    id: 'fri-1',
-    title: 'Classes',
+    id: "fri-1",
+    title: "Classes",
     day: 4,
     startHour: 9,
     endHour: 13,
-    category: 'class',
-    status: 'confirmed',
+    category: "class",
+    status: "confirmed",
   },
   {
-    id: 'fri-2',
-    title: 'Class',
+    id: "fri-2",
+    title: "Class",
     day: 4,
     startHour: 17,
     endHour: 19,
-    category: 'class',
-    status: 'confirmed',
+    category: "class",
+    status: "confirmed",
   },
   {
-    id: 'sun-1',
-    title: 'Church',
+    id: "sun-1",
+    title: "Church",
     day: 6,
     startHour: 8,
     endHour: 12,
-    category: 'church',
-    status: 'confirmed',
+    category: "church",
+    status: "confirmed",
   },
-]
+];
 
-const startHour = 6
-const endHour = 24
-const hourHeight = 56
+const startHour = 6;
+const endHour = 24;
+const hourHeight = 56;
 
 function formatTime(hour: number) {
-  const wholeHour = Math.floor(hour) % 24
-  const minutes = hour % 1 === 0 ? '00' : '30'
-  const displayHour = wholeHour % 12 || 12
-  const period = wholeHour < 12 ? 'AM' : 'PM'
+  const wholeHour = Math.floor(hour) % 24;
+  const minutes = hour % 1 === 0 ? "00" : "30";
+  const displayHour = wholeHour % 12 || 12;
+  const period = wholeHour < 12 ? "AM" : "PM";
 
-  return `${displayHour}:${minutes} ${period}`
+  return `${displayHour}:${minutes} ${period}`;
 }
 
 function getWeekStart(weekOffset: number) {
-  const today = new Date()
-  const currentDay = today.getDay()
-  const distanceFromMonday = currentDay === 0 ? -6 : 1 - currentDay
+  const today = new Date();
+  const currentDay = today.getDay();
+  const distanceFromMonday = currentDay === 0 ? -6 : 1 - currentDay;
 
-  const monday = new Date(today)
-  monday.setHours(0, 0, 0, 0)
-  monday.setDate(today.getDate() + distanceFromMonday + weekOffset * 7)
+  const monday = new Date(today);
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(today.getDate() + distanceFromMonday + weekOffset * 7);
 
-  return monday
+  return monday;
 }
 
 function getDayIndex(date: Date) {
-  const browserDay = date.getDay()
+  const browserDay = date.getDay();
 
-  return browserDay === 0 ? 6 : browserDay - 1
+  return browserDay === 0 ? 6 : browserDay - 1;
 }
 
 function getDecimalHour(date: Date) {
-  return date.getHours() + date.getMinutes() / 60
+  return date.getHours() + date.getMinutes() / 60;
 }
 
-function apiBlockToScheduleBlock(
-  block: ApiScheduleBlock,
-): ScheduleBlock {
-  const start = new Date(block.start_at)
-  const end = new Date(block.end_at)
-
+function apiBlockToScheduleBlock(block: ApiScheduleBlock): ScheduleBlock {
+  const start = new Date(block.start_at);
+  const end = new Date(block.end_at);
 
   return {
     id: `backend-${block.id}`,
@@ -163,232 +160,210 @@ function apiBlockToScheduleBlock(
     startHour: getDecimalHour(start),
     endHour: getDecimalHour(end),
     category: block.category,
-    status:
-      block.status === 'proposed'
-        ? 'proposed'
-        : 'confirmed',
+    status: block.status === "proposed" ? "proposed" : "confirmed",
     reason: block.reason ?? undefined,
-  }
+  };
 }
 
-function blockOccursInWeek(
-  block: ApiScheduleBlock,
-  weekStart: Date,
-) {
-  const blockStart = new Date(block.start_at)
+function blockOccursInWeek(block: ApiScheduleBlock, weekStart: Date) {
+  const blockStart = new Date(block.start_at);
 
-  const followingWeek = new Date(weekStart)
-  followingWeek.setDate(weekStart.getDate() + 7)
+  const followingWeek = new Date(weekStart);
+  followingWeek.setDate(weekStart.getDate() + 7);
 
-  return (
-    blockStart >= weekStart &&
-    blockStart < followingWeek
-  )
+  return blockStart >= weekStart && blockStart < followingWeek;
 }
 
 function dateAtHour(date: Date, hour: number) {
-  const result = new Date(date)
-  const wholeHour = Math.floor(hour)
-  const minutes = Math.round((hour - wholeHour) * 60)
+  const result = new Date(date);
+  const wholeHour = Math.floor(hour);
+  const minutes = Math.round((hour - wholeHour) * 60);
 
-  result.setHours(wholeHour,minutes,0,0)
-  return result
+  result.setHours(wholeHour, minutes, 0, 0);
+  return result;
 }
 
 function toApiDateTime(date: Date) {
-  const pad = (value: number) =>
-    value.toString().padStart(2, '0')
+  const pad = (value: number) => value.toString().padStart(2, "0");
 
   return [
     date.getFullYear(),
-    '-',
+    "-",
     pad(date.getMonth() + 1),
-    '-',
+    "-",
     pad(date.getDate()),
-    'T',
+    "T",
     pad(date.getHours()),
-    ':',
+    ":",
     pad(date.getMinutes()),
-    ':00',  
-  ].join('')
+    ":00",
+  ].join("");
 }
 
 function getCategoryClass(category: string) {
   const normalizedCategory = category
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 
-  return `category-${normalizedCategory || 'other'}`
+  return `category-${normalizedCategory || "other"}`;
 }
 
 function App() {
-  const [backendOnline, setBackendOnline] = useState(false)
-  const [blocks, setBlocks] = useState(initialBlocks)
-  const [weekOffset, setWeekOffset] = useState(0)
-  const [savingProposal, setSavingProposal] = useState(false)
-  const [proposalError, setProposalError] = useState<string | null>(null)
+  const [backendOnline, setBackendOnline] = useState(false);
+  const [blocks, setBlocks] = useState(initialBlocks);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [savingProposal, setSavingProposal] = useState(false);
+  const [proposalError, setProposalError] = useState<string | null>(null);
 
   useEffect(() => {
-  let ignoreResult = false
+    let ignoreResult = false;
 
-  async function loadSchedule() {
-    try {
-      const savedBlocks = await getScheduleBlocks()
+    async function loadSchedule() {
+      try {
+        const savedBlocks = await getScheduleBlocks();
 
-      if (ignoreResult) {
-        return
-      }
+        if (ignoreResult) {
+          return;
+        }
 
-      const selectedWeekStart = getWeekStart(weekOffset)
+        const selectedWeekStart = getWeekStart(weekOffset);
 
-      const backendBlocks = savedBlocks
-        .filter((block) => block.status !== 'rejected')
-        .filter((block) =>
-          blockOccursInWeek(block, selectedWeekStart),
-        )
-        .map(apiBlockToScheduleBlock)
+        const backendBlocks = savedBlocks
+          .filter((block) => block.status !== "rejected")
+          .filter((block) => blockOccursInWeek(block, selectedWeekStart))
+          .map(apiBlockToScheduleBlock);
 
-      setBlocks([
-        ...initialBlocks,
-        ...backendBlocks,
-      ])
+        setBlocks([...initialBlocks, ...backendBlocks]);
 
-      setBackendOnline(true)
-    } catch (error) {
-      console.error('Could not load schedule:', error)
+        setBackendOnline(true);
+      } catch (error) {
+        console.error("Could not load schedule:", error);
 
-      if (!ignoreResult) {
-        setBackendOnline(false)
-        setBlocks(initialBlocks)
+        if (!ignoreResult) {
+          setBackendOnline(false);
+          setBlocks(initialBlocks);
+        }
       }
     }
-  }
 
-  void loadSchedule()
+    void loadSchedule();
 
-  return () => {
-    ignoreResult = true
-  }
-}, [weekOffset])
+    return () => {
+      ignoreResult = true;
+    };
+  }, [weekOffset]);
 
-  const proposedBlock = blocks.find((block) => block.status === 'proposed')
+  const proposedBlock = blocks.find((block) => block.status === "proposed");
   const hours = Array.from(
     { length: endHour - startHour },
     (_, index) => startHour + index,
-  )
+  );
 
-  const weekStart = getWeekStart(weekOffset)
-  const weekEnd = new Date(weekStart)
-  weekEnd.setDate(weekStart.getDate() + 6)
+  const weekStart = getWeekStart(weekOffset);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
 
   const weekDates = days.map((_, index) => {
-    const date = new Date(weekStart)
-    date.setDate(weekStart.getDate() + index)
-    return date
-  })
+    const date = new Date(weekStart);
+    date.setDate(weekStart.getDate() + index);
+    return date;
+  });
 
-  const weekLabel = `${weekStart.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  })} – ${weekEnd.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })}`
+  const weekLabel = `${weekStart.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  })} – ${weekEnd.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })}`;
 
-  async function saveProposalChanges(
-  changes: ScheduleBlockChanges,
-) {
-  if (!proposedBlock?.backendId || savingProposal) {
-    return
-  }
-
-  setSavingProposal(true)
-  setProposalError(null)
-
-  try {
-    const updatedBlock = await updateScheduleBlock(
-      proposedBlock.backendId,
-      changes,
-    )
-
-    if (updatedBlock.status === 'rejected') {
-      setBlocks((currentBlocks) =>
-        currentBlocks.filter(
-          (block) => block.backendId !== updatedBlock.id,
-        ),
-      )
-
-      return
+  async function saveProposalChanges(changes: ScheduleBlockChanges) {
+    if (!proposedBlock?.backendId || savingProposal) {
+      return;
     }
 
-    const displayBlock =
-      apiBlockToScheduleBlock(updatedBlock)
+    setSavingProposal(true);
+    setProposalError(null);
 
-    setBlocks((currentBlocks) =>
-      currentBlocks.map((block) =>
-        block.backendId === updatedBlock.id
-          ? displayBlock
-          : block,
-      ),
-    )
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'Could not update the proposal.'
+    try {
+      const updatedBlock = await updateScheduleBlock(
+        proposedBlock.backendId,
+        changes,
+      );
 
-    setProposalError(message)
-  } finally {
-    setSavingProposal(false)
-  }
-}
+      if (updatedBlock.status === "rejected") {
+        setBlocks((currentBlocks) =>
+          currentBlocks.filter((block) => block.backendId !== updatedBlock.id),
+        );
 
-async function acceptProposal() {
-  await saveProposalChanges({
-    status: 'confirmed',
-  })
-}
+        return;
+      }
 
-async function rejectProposal() {
-  await saveProposalChanges({
-    status: 'rejected',
-  })
-}
+      const displayBlock = apiBlockToScheduleBlock(updatedBlock);
 
-async function moveProposal() {
-  const newStart = dateAtHour(weekDates[4], 14)
-  const newEnd = dateAtHour(weekDates[4], 15)
+      setBlocks((currentBlocks) =>
+        currentBlocks.map((block) =>
+          block.backendId === updatedBlock.id ? displayBlock : block,
+        ),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not update the proposal.";
 
-  await saveProposalChanges({
-    start_at: toApiDateTime(newStart),
-    end_at: toApiDateTime(newEnd),
-    reason:
-      'I moved it to Friday from 2–3 PM. This still leaves time before your evening class.',
-  })
-}
-
-async function shortenProposal() {
-  if (!proposedBlock) {
-    return
+      setProposalError(message);
+    } finally {
+      setSavingProposal(false);
+    }
   }
 
-  const newStart = dateAtHour(
-    weekDates[proposedBlock.day],
-    proposedBlock.startHour,
-  )
+  async function acceptProposal() {
+    await saveProposalChanges({
+      status: "confirmed",
+    });
+  }
 
-  const newEnd = new Date(newStart)
-  newEnd.setMinutes(newEnd.getMinutes() + 30)
+  async function rejectProposal() {
+    await saveProposalChanges({
+      status: "rejected",
+    });
+  }
 
-  await saveProposalChanges({
-    end_at: toApiDateTime(newEnd),
-    reason:
-      'I shortened this to a 30-minute starter session so you can make progress without using the whole hour.',
-  })
-}
+  async function moveProposal() {
+    const newStart = dateAtHour(weekDates[4], 14);
+    const newEnd = dateAtHour(weekDates[4], 15);
+
+    await saveProposalChanges({
+      start_at: toApiDateTime(newStart),
+      end_at: toApiDateTime(newEnd),
+      reason:
+        "I moved it to Friday from 2–3 PM. This still leaves time before your evening class.",
+    });
+  }
+
+  async function shortenProposal() {
+    if (!proposedBlock) {
+      return;
+    }
+
+    const newStart = dateAtHour(
+      weekDates[proposedBlock.day],
+      proposedBlock.startHour,
+    );
+
+    const newEnd = new Date(newStart);
+    newEnd.setMinutes(newEnd.getMinutes() + 30);
+
+    await saveProposalChanges({
+      end_at: toApiDateTime(newEnd),
+      reason:
+        "I shortened this to a 30-minute starter session so you can make progress without using the whole hour.",
+    });
+  }
 
   return (
     <div className="app-shell">
@@ -424,9 +399,9 @@ async function shortenProposal() {
           </button>
         </div>
 
-        <span className={`status ${backendOnline ? 'online' : 'offline'}`}>
+        <span className={`status ${backendOnline ? "online" : "offline"}`}>
           <i />
-          {backendOnline ? 'Backend online' : 'Backend offline'}
+          {backendOnline ? "Backend online" : "Backend offline"}
         </span>
       </header>
 
@@ -435,7 +410,7 @@ async function shortenProposal() {
           <div className="calendar-toolbar">
             <div>
               <span className="section-kicker">TIMETABLE</span>
-              <h1>{weekOffset === 0 ? 'This week' : weekLabel}</h1>
+              <h1>{weekOffset === 0 ? "This week" : weekLabel}</h1>
             </div>
 
             <button
@@ -455,9 +430,9 @@ async function shortenProposal() {
                 <div className="day-heading" key={day.short}>
                   <strong>{day.short}</strong>
                   <span>
-                    {weekDates[index].toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
+                    {weekDates[index].toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
                     })}
                   </span>
                 </div>
@@ -501,13 +476,12 @@ async function shortenProposal() {
                         className={`schedule-block ${getCategoryClass(block.category)} ${block.status}`}
                         key={block.id}
                         style={{
-                          top:
-                            (block.startHour - startHour) * hourHeight + 3,
+                          top: (block.startHour - startHour) * hourHeight + 3,
                           height:
                             (block.endHour - block.startHour) * hourHeight - 6,
                         }}
                       >
-                        {block.status === 'proposed' && (
+                        {block.status === "proposed" && (
                           <small>NEW FROM CHIP</small>
                         )}
 
@@ -528,7 +502,7 @@ async function shortenProposal() {
         <aside className="chip-panel">
           <header className="panel-header">
             <span>CHIP SAYS</span>
-            <i className={proposedBlock ? 'thinking' : ''} />
+            <i className={proposedBlock ? "thinking" : ""} />
           </header>
 
           <div className="panel-content">
@@ -587,7 +561,7 @@ async function shortenProposal() {
                     disabled={savingProposal}
                     onClick={acceptProposal}
                   >
-                    {savingProposal ? 'Saving...' : '✓ Accept'}
+                    {savingProposal ? "Saving..." : "✓ Accept"}
                   </button>
 
                   <button
@@ -608,24 +582,15 @@ async function shortenProposal() {
                 </div>
 
                 <div className="quick-actions">
-                  <button
-                    disabled={savingProposal}
-                    onClick={moveProposal}
-                  >
+                  <button disabled={savingProposal} onClick={moveProposal}>
                     Find another time
                   </button>
 
-                  <button
-                    disabled={savingProposal}
-                    onClick={moveProposal}
-                  >
+                  <button disabled={savingProposal} onClick={moveProposal}>
                     Move to another day
                   </button>
 
-                  <button
-                    disabled={savingProposal}
-                    onClick={shortenProposal}
-                  >
+                  <button disabled={savingProposal} onClick={shortenProposal}>
                     Shorten to 30 min
                   </button>
                 </div>
@@ -662,7 +627,7 @@ async function shortenProposal() {
         <span>Local-first</span>
       </footer>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
