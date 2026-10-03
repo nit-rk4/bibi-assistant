@@ -6,6 +6,7 @@ import {
   type ScheduleBlockChanges,
 } from "./api";
 import "./App.css";
+import TaskPanel from "./TaskPanel";
 
 const days = [
   { short: "MON", long: "Monday" },
@@ -369,7 +370,7 @@ function App() {
     <div className="app-shell">
       <header className="command-bar">
         <div className="brand">
-          <span className="brand-word">CHIP</span>
+          <span className="brand-word">Bibi</span>
           <span className="brand-role">Your weekly planning assistant</span>
         </div>
 
@@ -482,7 +483,7 @@ function App() {
                         }}
                       >
                         {block.status === "proposed" && (
-                          <small>NEW FROM CHIP</small>
+                          <small>NEW FROM BIBI</small>
                         )}
 
                         <strong>{block.title}</strong>
@@ -501,11 +502,12 @@ function App() {
 
         <aside className="chip-panel">
           <header className="panel-header">
-            <span>CHIP SAYS</span>
+            <span>BIBI SAYS</span>
             <i className={proposedBlock ? "thinking" : ""} />
           </header>
 
           <div className="panel-content">
+            <TaskPanel />
             {proposedBlock ? (
               <>
                 <section className="message-card">
@@ -605,7 +607,7 @@ function App() {
           </div>
 
           <div className="chat-area">
-            <label htmlFor="chip-message">ASK CHIP</label>
+            <label htmlFor="chip-message">ASK BIBI</label>
 
             <div className="chat-input">
               <textarea
@@ -622,7 +624,7 @@ function App() {
       </main>
 
       <footer className="footer-strip">
-        <span>CHIP v0.1</span>
+        <span>BIBI v0.1</span>
         <span>Plans. Progress. More good days.</span>
         <span>Local-first</span>
       </footer>

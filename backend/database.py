@@ -2,7 +2,7 @@ from pathlib import Path
 from sqlmodel import Session, SQLModel, create_engine
 import models
 
-DATABASE_FILE = Path(__file__).resolve().parent / "chip.db"
+DATABASE_FILE = Path(__file__).resolve().parent / "bibi.db"
 DATABASE_URL = f"sqlite:///{DATABASE_FILE.as_posix()}"
 
 engine = create_engine(

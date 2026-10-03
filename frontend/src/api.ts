@@ -13,6 +13,23 @@ export type ApiScheduleBlock = {
   is_recurring: boolean;
 };
 
+export type ApiTask = {
+  id: number;
+  title: string;
+  deadline: string | null;
+  estimated_minutes: number;
+  remaining_minutes: number;
+  importance: number;
+  status: string;
+};
+
+export type TaskCreate = {
+  title: string;
+  estimated_minutes: number;
+  deadline?: string | null;
+  importance?: number;
+};
+
 export type ScheduleBlockChanges = Partial<Omit<ApiScheduleBlock, "id">>;
 
 export type ScheduleBlockCreate = Omit<ApiScheduleBlock, "id">;
@@ -33,6 +50,23 @@ export async function getScheduleBlocks() {
   const response = await fetch(`${API_BASE_URL}/schedule-blocks`);
   await throwIfFailed(response);
   return response.json() as Promise<ApiScheduleBlock[]>;
+}
+
+export async function getTasks() {
+  const response = await fetch(`${API_BASE_URL}/tasks`);
+  await throwIfFailed(response);
+  return response.json() as Promise<ApiTask[]>;
+}
+
+export async function createTask(task: TaskCreate) {
+  const response = await fetch(`${API_BASE_URL}/tasks`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(task),
+  });
+
+  await throwIfFailed(response);
+  return response.json() as Promise<ApiTask>;
 }
 
 export async function createScheduleBlock(block: ScheduleBlockCreate) {
