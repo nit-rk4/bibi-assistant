@@ -414,13 +414,16 @@ function App() {
               <h1>{weekOffset === 0 ? "This week" : weekLabel}</h1>
             </div>
 
-            <button
-              className="today-button"
-              onClick={() => setWeekOffset(0)}
-              type="button"
-            >
-              Today
-            </button>
+            <div className="calendar-actions">
+              <button
+                className="today-button"
+                onClick={() => setWeekOffset(0)}
+                type="button"
+              >
+                Today
+              </button>
+              <TaskPanel />
+            </div>
           </div>
 
           <div className="calendar">
@@ -507,7 +510,6 @@ function App() {
           </header>
 
           <div className="panel-content">
-            <TaskPanel />
             {proposedBlock ? (
               <>
                 <section className="message-card">

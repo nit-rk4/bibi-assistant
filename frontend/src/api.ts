@@ -16,6 +16,7 @@ export type ApiScheduleBlock = {
 export type ApiTask = {
   id: number;
   title: string;
+  description: string | null;
   deadline: string | null;
   estimated_minutes: number;
   remaining_minutes: number;
@@ -25,6 +26,7 @@ export type ApiTask = {
 
 export type TaskCreate = {
   title: string;
+  description?: string | null;
   estimated_minutes: number;
   deadline?: string | null;
   importance?: number;
@@ -39,11 +41,31 @@ async function throwIfFailed(response: Response) {
     return;
   }
 
-  const message = await response.text();
+  let message = response.status >= 500
+    ? "Bibi could not save or load your data. Please try again."
+    : "The request could not be completed. Please check your input and try again.";
 
-  throw new Error(
-    message || `Backend request failed with status ${response.status}`,
-  );
+  try {
+    const body = await response.json();
+    if (response.status < 500 && typeof body.detail === "string") {
+      message = body.detail;
+    } else if (response.status === 422 && Array.isArray(body.detail)) {
+      const labels: Record<string, string> = {
+        title: "Task name",
+        estimated_minutes: "Estimated duration",
+        deadline: "Deadline",
+        description: "Context",
+      };
+      message = body.detail.map((issue: { loc?: string[]; msg?: string }) => {
+        const field = issue.loc?.at(-1) ?? "Input";
+        return `${labels[field] ?? field}: ${issue.msg ?? "Invalid value"}`;
+      }).join(". ");
+    }
+  } catch {
+    // A non-JSON error response still gets an understandable fallback.
+  }
+
+  throw new Error(message);
 }
 
 export async function getScheduleBlocks() {
@@ -63,6 +85,8 @@ export async function createTask(task: TaskCreate) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(task),
+  }).catch(() => {
+    throw new Error("Could not reach Bibi. Check that the backend is running, then try again. Your entries are still here.");
   });
 
   await throwIfFailed(response);

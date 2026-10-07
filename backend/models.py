@@ -1,4 +1,5 @@
 from datetime import datetime
+from pydantic import field_validator
 from sqlmodel import SQLModel, Field
 
 
@@ -29,7 +30,13 @@ class Task(TaskBase, table=True):
     
     
 class TaskCreate(TaskBase):
-    pass
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Enter a task name.")
+        return value
 
 class TaskUpdate (SQLModel):
     title: str | None = None
@@ -88,4 +95,3 @@ class ScheduleBlockUpdate(SQLModel):
     reason: str | None = None
     is_recurring: bool | None = None
     
-
