@@ -11,6 +11,7 @@ export default function TaskPanel() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [minutes, setMinutes] = useState("60");
+  const [canBeSplit, setCanBeSplit] = useState(true);
   const [deadline, setDeadline] = useState("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
@@ -92,12 +93,14 @@ export default function TaskPanel() {
       const saved = await createTask({
         title: title.trim(),
         estimated_minutes: duration,
+        can_be_split: canBeSplit,
         deadline: deadline || null,
         description: description.trim() || null,
       });
       setTasks((current) => [saved, ...current]);
       setTitle("");
       setMinutes("60");
+      setCanBeSplit(true);
       setDeadline("");
       setDescription("");
       setNotice(`“${saved.title}” saved as unscheduled work.`);
@@ -169,6 +172,32 @@ export default function TaskPanel() {
                 value={minutes}
                 onChange={(event) => setMinutes(event.target.value)}
               />
+
+              <fieldset className = "task-splitting">
+                <legend>Work sessions</legend>
+                
+                <label className="task-splitting-option">
+                  <input
+                    type="radio"
+                    name="task-splitting"
+                    value="one-session"
+                    checked={!canBeSplit}
+                    onChange={() => setCanBeSplit(false)}
+                  />
+                  One session only
+                </label>
+
+                <label className="task-splitting-option">
+                  <input
+                    type="radio"
+                    name="task-splitting"
+                    value="split-sessions"
+                    checked={canBeSplit}
+                    onChange={() => setCanBeSplit(true)}
+                  />
+                  Can be spread across sessions
+                </label>
+              </fieldset>
 
               <label htmlFor="task-deadline">Deadline <span>(optional)</span></label>
               <input

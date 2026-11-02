@@ -45,6 +45,7 @@ class TaskEntryTests(unittest.TestCase):
         })
         self.assertEqual(response.status_code, 201)
         saved = response.json()
+        self.assertIs(saved["can_be_split"], True)
         self.assertEqual(saved["title"], "Prepare presentation")
         self.assertEqual(saved["estimated_minutes"], 75)
         self.assertEqual(saved["remaining_minutes"], 75)
@@ -92,6 +93,45 @@ class TaskEntryTests(unittest.TestCase):
         self.assertEqual(self.client.get("/tasks").json(), [])
         self.assertEqual(self.client.get("/schedule-blocks").json(), [])
 
+    def test_splitting_choices_persist_without_creating_sessions(self):
+        saved_tasks = []
 
+        for can_be_split in (True, False):
+            with self.subTest(can_be_split=can_be_split):
+                response = self.client.post("/tasks", json={
+                    "title": f"Splitting choice {can_be_split}",
+                    "estimated_minutes": 45,
+                    "can_be_split": can_be_split,
+                })
+                self.assertEqual(response.status_code, 201)
+
+                saved = response.json()
+                self.assertIs(saved["can_be_split"], can_be_split)
+                self.assertEqual(saved["remaining_minutes"], 45)
+                saved_tasks.append(saved)
+
+        self.engine.dispose()
+
+        response = self.client.get("/tasks")
+        self.assertEqual(response.status_code, 200)
+        fetched_by_id = {
+            task["id"]: task for task in response.json()
+        }
+
+        self.assertEqual(len(fetched_by_id), len(saved_tasks))
+
+        for saved in saved_tasks:
+            with self.subTest(task_id=saved["id"]):
+                fetched = fetched_by_id[saved["id"]]
+                self.assertEqual(fetched, saved)
+                self.assertIs(
+                    fetched["can_be_split"],
+                    saved["can_be_split"],
+                )
+
+        self.assertEqual(
+            self.client.get("/schedule-blocks").json(),
+            [],
+        )
 if __name__ == "__main__":
     unittest.main()

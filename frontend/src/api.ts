@@ -20,6 +20,7 @@ export type ApiTask = {
   deadline: string | null;
   estimated_minutes: number;
   remaining_minutes: number;
+  can_be_split: boolean;
   importance: number;
   status: string;
 };
@@ -28,6 +29,7 @@ export type TaskCreate = {
   title: string;
   description?: string | null;
   estimated_minutes: number;
+  can_be_split?: boolean;
   deadline?: string | null;
   importance?: number;
 };

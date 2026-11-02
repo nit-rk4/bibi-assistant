@@ -20,7 +20,7 @@ test("task creation sends context and deadline without scheduling work", async (
     deadline: "2026-10-12T14:30",
     description: "Explain the project clearly.",
   };
-  const saved = { id: 7, ...task, importance: 3, remaining_minutes: 75, status: "active" };
+  const saved = { id: 7, ...task, importance: 3, remaining_minutes: 75, can_be_split: true, status: "active" };
   const fetchMock = mock.method(globalThis, "fetch", async (url, options) => {
     assert.ok(url.endsWith("/tasks"));
     assert.equal(options.method, "POST");
@@ -34,6 +34,43 @@ test("task creation sends context and deadline without scheduling work", async (
     fetchMock.mock.restore();
   }
 });
+
+for (const canBeSplit of [false, true]) {
+  test(`task creation preserves can_be_split=${canBeSplit}`, async () => {
+    const task = {
+      title: "Read a chapter",
+      estimated_minutes: 30,
+      can_be_split: canBeSplit,
+    };
+
+    const saved = {
+      id: 8,
+      ...task,
+      description: null,
+      deadline: null,
+      importance: 3,
+      remaining_minutes: 30,
+      status: "active",
+    };
+
+    const fetchMock = mock.method(globalThis, "fetch", async (url, options) => {
+      assert.ok(url.endsWith("/tasks"));
+      assert.equal(options.method, "POST");
+      assert.deepEqual(JSON.parse(options.body), task);
+      return Response.json(saved, { status: 201 });
+    });
+
+    try {
+      const result = await api.createTask(task);
+
+      assert.deepEqual(result, saved);
+      assert.equal(result.can_be_split, canBeSplit);
+      assert.equal(fetchMock.mock.callCount(), 1);
+    } finally {
+      fetchMock.mock.restore();
+    }
+  });
+}
 
 test("validation errors identify the field without exposing raw JSON", async () => {
   const fetchMock = mock.method(globalThis, "fetch", async () => Response.json({
